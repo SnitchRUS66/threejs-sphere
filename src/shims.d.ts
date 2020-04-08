@@ -1,5 +1,7 @@
 /* eslint-disable */
 declare module 'three.interaction' {
-    let x: any;
+    let x: {
+        Interaction: any
+    };
     export = x;
 }

@@ -54,7 +54,8 @@ export default class PointsCloudComponent extends Vue {
     scene!: THREE.Scene;
     points!: THREE.Group;
     sphere!: THREE.Mesh;
-    allObjects!: THREE.Group;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    allObjects!: THREE.Group & { on?: (event: string, cb: () => any) => void};
     needToRotate = true;
     tempVector = new THREE.Vector3();
 
@@ -67,8 +68,7 @@ export default class PointsCloudComponent extends Vue {
         this.animate();
     }
 
-    async init() {
-        this.allObjects = new THREE.Group()
+    init() {
         //renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.$refs.canvas as HTMLCanvasElement,
@@ -96,6 +96,7 @@ export default class PointsCloudComponent extends Vue {
 
         new Interaction(this.renderer, this.scene, this.camera);
 
+        this.allObjects = new THREE.Group();
         this.points = new THREE.Group();
 
         const distance = 300;
@@ -129,17 +130,21 @@ export default class PointsCloudComponent extends Vue {
 
         this.sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 
-        this.allObjects.add(this.points)
-        this.allObjects.add(this.sphere)
+        this.allObjects.add(this.points);
+        this.allObjects.add(this.sphere);
 
-        this.allObjects.on('mouseover', () => {
-            this.needToRotate = false;
-            (this.$refs.canvas as HTMLCanvasElement).style.cursor = 'not-allowed';
-        })
-        this.allObjects.on('mouseout', () => {
-            this.needToRotate = true;
-            (this.$refs.canvas as HTMLCanvasElement).style.cursor = 'auto';
-        })
+        /* eslint-disable */
+        if (this.allObjects.on) {
+            this.allObjects.on('mouseover', () => {
+                this.needToRotate = false;
+                (this.$refs.canvas as HTMLCanvasElement).style.cursor = 'not-allowed';
+            })
+            this.allObjects.on('mouseout', () => {
+                this.needToRotate = true;
+                (this.$refs.canvas as HTMLCanvasElement).style.cursor = 'auto';
+            })
+        }
+        /* eslint-enable */
 
         this.scene.add(this.allObjects);
     }

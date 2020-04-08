@@ -16,3 +16,11 @@ import PointsCloudComponent from '@/components/PointsCloud.vue';
 })
 export default class HomeView extends Vue {}
 </script>
+
+<style lang="stylus">
+.home {
+    .points-cloud {
+        margin: 0 auto;
+    }
+}
+</style>

@@ -1,18 +1,16 @@
 <template>
     <div class="points-cloud">
         <div class="points-cloud__labels-list">
-            <template v-for="(item, index) in data.items">
-                <a v-if="index < maxLabels"
-                   ref="label"
-                   class="points-cloud__label"
-                   :key="`${item.title}_${index}`"
-                   :href="item.link"
-                   target="_blank"
-                   @mouseover="onMouseoverLabel"
-                   @mouseout="onMouseoutLabel">
-                    {{item.title}}
-                </a>
-            </template>
+            <a v-for="(item, index) in data.items.slice(0, maxLabels)"
+               ref="label"
+               class="points-cloud__label"
+               :key="`${item.title}_${index}`"
+               :href="item.link"
+               target="_blank"
+               @mouseover="onMouseoverLabel"
+               @mouseout="onMouseoutLabel">
+                {{item.title}}
+            </a>
         </div>
         <canvas ref="canvas"
                 class="points-cloud__canvas">
@@ -42,6 +40,12 @@ export default class PointsCloudComponent extends Vue {
         }[];
     };
 
+    @Prop({ default: 300 })
+    maxPoints!: number;
+
+    @Prop({ default: 20 })
+    maxLabels!: number;
+
     viewAngle = 45;
     near = 0.1;
     far = 1800;
@@ -52,7 +56,6 @@ export default class PointsCloudComponent extends Vue {
     sphere!: THREE.Mesh;
     allObjects!: THREE.Group;
     needToRotate = true;
-    maxLabels = 20;
     tempVector = new THREE.Vector3();
 
     get aspect() {
@@ -97,7 +100,11 @@ export default class PointsCloudComponent extends Vue {
 
         const distance = 300;
 
-        this.data.items.forEach((item, index) => {
+        this.data.items.some((item, index) => {
+            if (index >= this.maxPoints) {
+                return true;
+            }
+
             const theta = THREE.MathUtils.randFloatSpread(360);
             const phi = THREE.MathUtils.randFloatSpread(360);
             const circleParams = {
@@ -117,9 +124,6 @@ export default class PointsCloudComponent extends Vue {
 
         const sphereGeometry = new THREE.SphereGeometry(distance, 24, 24);
         const sphereMaterial = new THREE.MeshBasicMaterial({
-            //color: 0x00ff00,
-            //transparent: true,
-            //opacity: 0,
             visible: false
         });
 
@@ -242,6 +246,7 @@ export default class PointsCloudComponent extends Vue {
         border: 1px solid #000;
         border-radius: 12px;
         cursor: pointer;
+        user-select: none;
     }
 }
 </style>

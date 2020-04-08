@@ -1,6 +1,8 @@
 <template>
     <div class="home">
-        <points-cloud :data="testData" />
+        <points-cloud :data="testData"
+                      :max-points="300"
+                      :max-labels="9" />
     </div>
 </template>
 
@@ -27,6 +29,9 @@ export default class HomeView extends Vue {
 
 <style lang="stylus">
 .home {
+    height: 100%;
+    display: flex;
+    align-items: center;
     .points-cloud {
         margin: 0 auto;
     }

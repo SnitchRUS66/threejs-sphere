@@ -1,7 +1,23 @@
 <template>
-    <canvas ref="canvas"
-            class="points-cloud">
-    </canvas>
+    <div class="points-cloud">
+        <div class="points-cloud__labels-list">
+            <template v-for="(item, index) in data.items">
+                <a v-if="index < maxLabels"
+                   ref="label"
+                   class="points-cloud__label"
+                   :key="`${item.title}_${index}`"
+                   :href="item.link"
+                   target="_blank"
+                   @mouseover="onMouseoverLabel"
+                   @mouseout="onMouseoutLabel">
+                    {{item.title}}
+                </a>
+            </template>
+        </div>
+        <canvas ref="canvas"
+                class="points-cloud__canvas">
+        </canvas>
+    </div>
 </template>
 
 <script lang="ts">
@@ -36,6 +52,8 @@ export default class PointsCloudComponent extends Vue {
     sphere!: THREE.Mesh;
     allObjects!: THREE.Group;
     needToRotate = true;
+    maxLabels = 20;
+    tempVector = new THREE.Vector3();
 
     get aspect() {
         return this.width / this.height;
@@ -79,10 +97,16 @@ export default class PointsCloudComponent extends Vue {
 
         const distance = 300;
 
-        this.data.items.forEach((item) => {
+        this.data.items.forEach((item, index) => {
             const theta = THREE.MathUtils.randFloatSpread(360);
             const phi = THREE.MathUtils.randFloatSpread(360);
-            const circle = this.drawCircle({ fill: item.filled });
+            const circleParams = {
+                fill: item.filled,
+                color: index < this.maxLabels
+                    ? `rgba(255, 0, 0, 1)`
+                    : `rgba(0, 0, 0, 1)`
+            }
+            const circle = this.drawCircle(circleParams);
 
             circle.position.x = distance * Math.sin(theta) * Math.cos(phi);
             circle.position.y = distance * Math.sin(theta) * Math.sin(phi);
@@ -106,18 +130,36 @@ export default class PointsCloudComponent extends Vue {
 
         this.allObjects.on('mouseover', () => {
             this.needToRotate = false;
+            (this.$refs.canvas as HTMLCanvasElement).style.cursor = 'not-allowed';
         })
         this.allObjects.on('mouseout', () => {
             this.needToRotate = true;
+            (this.$refs.canvas as HTMLCanvasElement).style.cursor = 'auto';
         })
 
         this.scene.add(this.allObjects);
     }
 
-    drawCircle(options?: { size?: number; borderWidth?: number; fill?: boolean }) {
+    onMouseoverLabel() {
+        this.needToRotate = false;
+    }
+
+    onMouseoutLabel() {
+        this.needToRotate = true;
+    }
+
+    drawCircle(
+        options?: {
+            size?: number;
+            borderWidth?: number;
+            fill?: boolean;
+            color?: string | CanvasGradient | CanvasPattern;
+        }
+    ) {
         const size = options?.size ?? 8;
         const borderWidth = options?.borderWidth ?? 1;
         const fill = options?.fill ?? false;
+        const color = options?.color ?? `rgba(0, 0, 0, 1)`;
         const canvas = document.createElement('canvas');
         const virtualBorderWidth = borderWidth * 2;
         const virtualSize = size * 2;
@@ -127,7 +169,8 @@ export default class PointsCloudComponent extends Vue {
 
         const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
-        ctx.strokeStyle = `rgba(0, 0, 0, 1)`;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
         ctx.lineWidth = virtualBorderWidth;
 
         ctx.beginPath();
@@ -151,22 +194,54 @@ export default class PointsCloudComponent extends Vue {
         return sprite;
     }
 
+    updateLabelsPoosition() {
+        this.points.children.forEach((point, index) => {
+            if (index < this.maxLabels) {
+                point.getWorldPosition(this.tempVector)
+                this.tempVector.project(this.camera);
+
+                const x = (this.tempVector.x * 0.5 + 0.5) * this.width;
+                const y = (this.tempVector.y * -0.5 + 0.5) * this.height;
+                const label = (this.$refs.label as HTMLDivElement[])[index];
+
+                if (label) {
+                    label.style.transform = `translate(-50%, -50%) translate(${x}px,${y}px)`;
+                    //label.style.zIndex = `${(-this.tempVector.z * .5 + .5) * 100000 | 0}`;
+                }
+            }
+        })
+    }
+
     animate() {
         window.requestAnimationFrame(this.animate);
         if (this.needToRotate) {
             this.points.rotation.y += 0.005;
+            this.renderer.render(this.scene, this.camera);
+            this.updateLabelsPoosition();
         }
-        this.renderer.render(this.scene, this.camera);
     }
 }
 </script>
 
 <style lang="stylus">
 .points-cloud {
-    background: yellow;
-
-}
-canvas {
-    box-shadow: 0 0 3px 0px #00ff41;
+    display: table;
+    &__labels-list {
+        position: relative;
+    }
+    &__label {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        background: #fff;
+        height: 24px;
+        padding: 0 6px;
+        font-size: 13px;
+        color: #000;
+        text-decoration: none;
+        border: 1px solid #000;
+        border-radius: 12px;
+        cursor: pointer;
+    }
 }
 </style>

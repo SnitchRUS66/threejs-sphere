@@ -28,7 +28,7 @@ export default class HomeView extends Vue {
 <style lang="stylus">
 .home {
     .points-cloud {
-        margin: 20px auto 0 auto;
+        margin: 0 auto;
     }
 }
 </style>

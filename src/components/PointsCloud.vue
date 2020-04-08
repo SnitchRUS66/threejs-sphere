@@ -17,6 +17,15 @@ export default class PointsCloudComponent extends Vue {
     @Prop({ default: 500 })
     height!: number;
 
+    @Prop({ default: () => { return { items: [] }}})
+    data!: {
+        items: {
+            title: string;
+            link: string;
+            filled: boolean;
+        }[];
+    };
+
     viewAngle = 45;
     near = 0.1;
     far = 1800;
@@ -70,17 +79,17 @@ export default class PointsCloudComponent extends Vue {
 
         const distance = 300;
 
-        for (let i = 0; i < 200; i++) {
+        this.data.items.forEach((item) => {
             const theta = THREE.MathUtils.randFloatSpread(360);
             const phi = THREE.MathUtils.randFloatSpread(360);
-            const circle = this.drawCircle();
+            const circle = this.drawCircle({ fill: item.filled });
 
             circle.position.x = distance * Math.sin(theta) * Math.cos(phi);
             circle.position.y = distance * Math.sin(theta) * Math.sin(phi);
             circle.position.z = distance * Math.cos(theta);
 
             this.points.add(circle);
-        }
+        });
 
         const sphereGeometry = new THREE.SphereGeometry(distance, 24, 24);
         const sphereMaterial = new THREE.MeshBasicMaterial({
@@ -106,8 +115,8 @@ export default class PointsCloudComponent extends Vue {
     }
 
     drawCircle(options?: { size?: number; borderWidth?: number; fill?: boolean }) {
-        const size = options?.size ?? 10;
-        const borderWidth = options?.borderWidth ?? 2;
+        const size = options?.size ?? 8;
+        const borderWidth = options?.borderWidth ?? 1;
         const fill = options?.fill ?? false;
         const canvas = document.createElement('canvas');
         const virtualBorderWidth = borderWidth * 2;

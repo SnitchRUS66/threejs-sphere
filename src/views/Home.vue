@@ -1,6 +1,5 @@
 <template>
     <div class="home">
-        <h1>This is an home page</h1>
         <points-cloud />
     </div>
 </template>
@@ -20,7 +19,7 @@ export default class HomeView extends Vue {}
 <style lang="stylus">
 .home {
     .points-cloud {
-        margin: 0 auto;
+        margin: 20px auto 0 auto;
     }
 }
 </style>

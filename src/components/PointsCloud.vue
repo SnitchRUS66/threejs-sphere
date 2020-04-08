@@ -1,24 +1,32 @@
 <template>
-    <div ref="pointsCloud"
-         class="points-cloud">
-    </div>
+    <canvas ref="canvas"
+            class="points-cloud">
+    </canvas>
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
+import { Component, Vue, Prop } from 'vue-property-decorator';
 import * as THREE from 'three';
+import { Interaction } from 'three.interaction';
 
 @Component
 export default class PointsCloudComponent extends Vue {
-    width = 0;
-    height = 0;
+    @Prop({ default: 500 })
+    width!: number;
+
+    @Prop({ default: 500 })
+    height!: number;
+
     viewAngle = 45;
     near = 0.1;
-    far = 10000;
+    far = 1800;
     renderer!: THREE.WebGLRenderer;
     camera!: THREE.PerspectiveCamera;
     scene!: THREE.Scene;
-    points!: THREE.Points;
+    points!: THREE.Group;
+    sphere!: THREE.Mesh;
+    allObjects!: THREE.Group;
+    needToRotate = true;
 
     get aspect() {
         return this.width / this.height;
@@ -29,27 +37,24 @@ export default class PointsCloudComponent extends Vue {
         this.animate();
     }
 
-    init() {
-        const container = this.$refs.pointsCloud as HTMLDivElement;
-
-        this.width = container.clientWidth;
-        this.height = container.clientHeight;
-
+    async init() {
+        this.allObjects = new THREE.Group()
         //renderer
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.$refs.canvas as HTMLCanvasElement,
+            antialias: true
+        });
         this.renderer.setSize(this.width, this.height);
-        container.appendChild(this.renderer.domElement);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
 
         //camera
         this.camera = new THREE.PerspectiveCamera(this.viewAngle, this.aspect, this.near, this.far);
-        this.camera.position.z = 300;
+        this.camera.position.z = 1000;
 
         //lights
-        //this.renderer.gammaInput = true;
-        //this.renderer.gammaOutput = true;
         this.renderer.outputEncoding = THREE.sRGBEncoding;
 
-        this.renderer.setClearColor(0x909090, 1.0);
+        this.renderer.setClearColor(0xffffff, 1.0);
 
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
 
@@ -59,34 +64,89 @@ export default class PointsCloudComponent extends Vue {
         this.scene.add(this.camera);
         this.scene.add(directionalLight);
 
-        const distance = 100;
-        const geometry = new THREE.Geometry();
+        new Interaction(this.renderer, this.scene, this.camera);
 
-        for (let i = 0; i < 1000; i++) {
+        this.points = new THREE.Group();
 
-            const vertex = new THREE.Vector3();
+        const distance = 300;
 
+        for (let i = 0; i < 200; i++) {
             const theta = THREE.MathUtils.randFloatSpread(360);
             const phi = THREE.MathUtils.randFloatSpread(360);
+            const circle = this.drawCircle();
 
-            vertex.x = distance * Math.sin(theta) * Math.cos(phi);
-            vertex.y = distance * Math.sin(theta) * Math.sin(phi);
-            vertex.z = distance * Math.cos(theta);
+            circle.position.x = distance * Math.sin(theta) * Math.cos(phi);
+            circle.position.y = distance * Math.sin(theta) * Math.sin(phi);
+            circle.position.z = distance * Math.cos(theta);
 
-            geometry.vertices.push(vertex);
+            this.points.add(circle);
         }
-        geometry.computeBoundingSphere();
-        this.points = new THREE.Points(geometry, new THREE.PointsMaterial({
+
+        const sphereGeometry = new THREE.SphereGeometry(distance, 24, 24);
+        const sphereMaterial = new THREE.MeshBasicMaterial({
+            //color: 0x00ff00,
+            //transparent: true,
+            //opacity: 0,
+            visible: false
+        });
+
+        this.sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+        this.allObjects.add(this.points)
+        this.allObjects.add(this.sphere)
+
+        this.allObjects.on('mouseover', () => {
+            this.needToRotate = false;
+        })
+        this.allObjects.on('mouseout', () => {
+            this.needToRotate = true;
+        })
+
+        this.scene.add(this.allObjects);
+    }
+
+    drawCircle(options?: { size?: number; borderWidth?: number; fill?: boolean }) {
+        const size = options?.size ?? 10;
+        const borderWidth = options?.borderWidth ?? 2;
+        const fill = options?.fill ?? false;
+        const canvas = document.createElement('canvas');
+        const virtualBorderWidth = borderWidth * 2;
+        const virtualSize = size * 2;
+
+        canvas.width = virtualSize + 1;
+        canvas.height = virtualSize + 1;
+
+        const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+
+        ctx.strokeStyle = `rgba(0, 0, 0, 1)`;
+        ctx.lineWidth = virtualBorderWidth;
+
+        ctx.beginPath();
+        ctx.arc(virtualSize / 2, virtualSize / 2, (virtualSize - virtualBorderWidth) / 2, 0, Math.PI * 2);
+        ctx.closePath()
+        ctx.stroke();
+        if (fill) {
+            ctx.fill()
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
             color: 0xffffff,
-            size: 5
-        }));
-        //this.points.boundingSphere = 5;
-        this.scene.add(this.points);
+            fog: true
+        })
+        const sprite = new THREE.Sprite(spriteMaterial);
+
+        sprite.scale.set(size, size, 1);
+
+        return sprite;
     }
 
     animate() {
         window.requestAnimationFrame(this.animate);
-        this.points.rotation.y += 0.001;
+        if (this.needToRotate) {
+            this.points.rotation.y += 0.005;
+        }
         this.renderer.render(this.scene, this.camera);
     }
 }
@@ -94,13 +154,10 @@ export default class PointsCloudComponent extends Vue {
 
 <style lang="stylus">
 .points-cloud {
-    width: 400px;
-    height: 400px;
-    background #dfbc1f;
+    background: yellow;
 
-    canvas {
-        width: 100% !important;
-        height: 100% !important;
-    }
+}
+canvas {
+    box-shadow: 0 0 3px 0px #00ff41;
 }
 </style>
